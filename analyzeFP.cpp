@@ -123,8 +123,13 @@ map<string, string> CVFPCPlugin::validizeSid(CFlightPlan flightPlan) {
 	int RFL = flightPlan.GetFlightPlanData().GetFinalAltitude();
 	
 	vector<string> route = split(flightPlan.GetFlightPlanData().GetRoute(), ' ');
+	string rte = "";
 	for (std::size_t i = 0; i < route.size(); i++) {
+		if (i != 0 && i != route.size()) {
+			route[i] = route[i].substr(0, route[i].find_first_of('/'));
+		}
 		boost::to_upper(route[i]);
+		rte = rte + route[i] + " ";
 	}
 
 	string sid = flightPlan.GetFlightPlanData().GetSidName(); boost::to_upper(sid);
@@ -224,8 +229,31 @@ map<string, string> CVFPCPlugin::validizeSid(CFlightPlan flightPlan) {
 				continue;
 			}
 		}
-		else if (conditions[i]["destinations"].IsString() && conditions[i]["destinations"].GetString() != destination) {
+		/*else if (conditions[i]["destinations"].IsString() && conditions[i]["destinations"].GetString() != destination) {
 			continue;
+		}*/
+		else if (conditions[i]["destinations"].IsString()) {
+			string dest = conditions[i]["destinations"].GetString();
+			int dest_length = dest.length();
+			
+			//length less than 4, we do prefix check
+			if (dest_length < 4) {
+				//cut the destination to get same length to check
+				string dest_pre = destination.substr(0, dest_length);
+				if (dest_pre != dest) {
+					//does not match destination prefix, skip
+					continue;
+				}
+			}
+			//length is 4, so match entire string
+			else if (dest != destination) {
+				//does not match, skip
+				continue;
+			}
+			//Passed it all
+			returnValid["DESTINATION"] = "Destination matches "+dest;
+			passed[0] = true;
+			
 		}
 		else {
 			returnValid["DESTINATION"] = "No Destination restr";
@@ -234,8 +262,17 @@ map<string, string> CVFPCPlugin::validizeSid(CFlightPlan flightPlan) {
 
 		// Does Condition contain our first airway if it's limited
 		if (conditions[i]["airways"].IsArray() && conditions[i]["airways"].Size()) {
-			string rte = flightPlan.GetFlightPlanData().GetRoute();
+			//string rte = flightPlan.GetFlightPlanData().GetRoute();
 			if (routeContains(rte, conditions[i]["airways"])) {
+				returnValid["AIRWAYS"] = "Passed Airways";
+				passed[1] = true;
+			}
+			else {
+				continue;
+			}
+		}
+		else if (conditions[i]["airways"].IsString()) {
+			if (rte.find(conditions[i]["airways"].GetString()) != std::string::npos) {
 				returnValid["AIRWAYS"] = "Passed Airways";
 				passed[1] = true;
 			}
