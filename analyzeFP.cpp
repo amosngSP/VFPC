@@ -140,9 +140,18 @@ map<string, string> CVFPCPlugin::validizeSid(CFlightPlan flightPlan) {
 	if (0 != first_wp.length())
 		boost::to_upper(first_wp);
 	string sid_suffix;
+	string transition;
 	if (first_wp.length() != sid.length()) {
 		sid_suffix = sid.substr(sid.find_first_of("0123456789"), sid.length());
+		// Check for transition in sid_suffix
 		boost::to_upper(sid_suffix);
+		if (std::string::npos != sid_suffix.find("X")) {
+			transition = sid_suffix.substr(sid_suffix.find_first_of("X")+1, sid.length());
+			sid_suffix = sid_suffix.substr(0, sid_suffix.find_first_of("X"));
+		}
+		//CVFPCPlugin::sendMessage("SID:"+sid+", Waypoint:"+first_wp+", Suffix:"+sid_suffix+", Transition:"+transition);
+		boost::to_upper(transition);
+		
 	}
 	string first_airway;
 
@@ -193,6 +202,14 @@ map<string, string> CVFPCPlugin::validizeSid(CFlightPlan flightPlan) {
 		if (conditions[i]["suffix"].IsString() && conditions[i]["suffix"].GetString() != sid_suffix) {
 			continue;
 		}
+		else if (conditions[i]["suffix"].IsArray() && routeContains(sid_suffix, conditions[i]["suffix"]) == false) {
+			continue;
+		}
+
+		// Skip SID if the check is transition-related
+		if (conditions[i]["transition"].IsString() && conditions[i]["transition"].GetString() != transition) {
+			continue;
+		}
 
 		// Does Condition contain our destination if it's limited
 		if (conditions[i]["destinations"].IsArray() && conditions[i]["destinations"].Size()) {
@@ -206,6 +223,9 @@ map<string, string> CVFPCPlugin::validizeSid(CFlightPlan flightPlan) {
 			else {
 				continue;
 			}
+		}
+		else if (conditions[i]["destinations"].IsString() && conditions[i]["destinations"].GetString() != destination) {
+			continue;
 		}
 		else {
 			returnValid["DESTINATION"] = "No Destination restr";
@@ -319,21 +339,31 @@ map<string, string> CVFPCPlugin::validizeSid(CFlightPlan flightPlan) {
 			passed[5] = true;
 		}
 
-		// Flight level (forbidden)
+		// Flight level allocation scheme
 		// Does Condition contain our first airway if it's limited
-		if (conditions[i]["forbidden_fls"].IsArray() && conditions[i]["forbidden_fls"].Size()) {
-			if (routeContains(to_string(RFL / 100), conditions[i]["forbidden_fls"])) {
-				returnValid["FORBIDDEN_FL"] = "Failed forbidden FLs. Forbidden FL: " + to_string(RFL / 100);
+		if (conditions[i]["allowed_fls"].IsArray() && conditions[i]["allowed_fls"].Size()) {
+			if (conditions[i]["FLAS"].IsString()) {
+				string allowed_fls = conditions[i]["FLAS"].GetString();
+				if (routeContains(to_string(RFL / 100), conditions[i]["allowed_fls"])) {
+					returnValid["ALLOWED_FL"] = allowed_fls + " (Passed)";
+					passed[6] = true;
+				}
+				else {
+					returnValid["ALLOWED_FL"] = allowed_fls + " (Failed)";
+				}
 			}
 			else {
-				returnValid["FORBIDDEN_FL"] = "Passed forbidden FLs";
-				passed[6] = true;
+				string errorText{ "Config Error for FLAS on SID: " };
+				errorText += first_wp;
+				sendMessage("Error", errorText);
+				returnValid["DIRECTION"] = "Config Error for FLAS on this SID! Check JSON file.";
 			}
 		}
 		else {
-			returnValid["FORBIDDEN_FL"] = "No forbidden FL";
+			returnValid["ALLOWED_FL"] = "No FLAS";
 			passed[6] = true;
 		}
+
 
 		// Special navigation requirements needed
 		if (conditions[i]["navigation"].IsString()) {

@@ -1,5 +1,5 @@
 #pragma once
-#include "EuroScopePlugIn.h"
+#include "Libs/EuroScopePlugIn.h"
 #include <sstream>
 #include <iostream>
 #include <string>

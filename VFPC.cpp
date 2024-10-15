@@ -2,7 +2,7 @@
 //
 
 #include "stdafx.h"
-#include "EuroScopePlugIn.h"
+#include "Libs/EuroScopePlugIn.h"
 #include "analyzeFP.hpp"
 
 CVFPCPlugin* gpMyPlugin = NULL;

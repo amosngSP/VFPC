@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.28307.757
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.31005.135
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "VFPC", "VFPC.vcxproj", "{0ED612D6-C21A-4060-AF5A-F0BE2F35ADB7}"
 EndProject
@@ -13,8 +13,8 @@ Global
 		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{0ED612D6-C21A-4060-AF5A-F0BE2F35ADB7}.Debug|x64.ActiveCfg = Debug|x64
-		{0ED612D6-C21A-4060-AF5A-F0BE2F35ADB7}.Debug|x64.Build.0 = Debug|x64
+		{0ED612D6-C21A-4060-AF5A-F0BE2F35ADB7}.Debug|x64.ActiveCfg = Debug|Win32
+		{0ED612D6-C21A-4060-AF5A-F0BE2F35ADB7}.Debug|x64.Build.0 = Debug|Win32
 		{0ED612D6-C21A-4060-AF5A-F0BE2F35ADB7}.Debug|x86.ActiveCfg = Debug|Win32
 		{0ED612D6-C21A-4060-AF5A-F0BE2F35ADB7}.Debug|x86.Build.0 = Debug|Win32
 		{0ED612D6-C21A-4060-AF5A-F0BE2F35ADB7}.Release|x64.ActiveCfg = Release|x64
