@@ -35,3 +35,4 @@ Release/
 
 # Other rubbish
 Debug/*
+Libs/include/boost/safe_numerics/out/build/*
