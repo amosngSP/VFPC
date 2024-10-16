@@ -1,6 +1,6 @@
 #include "stdafx.h"
 #include "analyzeFP.hpp"
-
+#include <stdexcept>
 extern "C" IMAGE_DOS_HEADER __ImageBase;
 
 bool blink;
@@ -93,6 +93,13 @@ void CVFPCPlugin::getSids() {
 
 		airports.insert(pair<string, SizeType>(airport_icao, i));
 	}
+}
+
+bool is_number(const std::string& s)
+{
+	std::string::const_iterator it = s.begin();
+	while (it != s.end() && std::isdigit(*it)) ++it;
+	return !s.empty() && it == s.end();
 }
 
 // Does the checking and magic stuff, so everything will be alright, when this is finished! Or not. Who knows?
@@ -348,13 +355,25 @@ map<string, string> CVFPCPlugin::validizeSid(CFlightPlan flightPlan) {
 		
 		// Flight level (min_fl, max_fl)
 		int min_fl, max_fl;
-		if (conditions[i].HasMember("min_fl") && (min_fl = conditions[i]["min_fl"].GetInt()) > 0) {
-			if ((RFL / 100) >= min_fl) {
-				returnValid["MIN_FL"] = "Passed Minimum FL (" + to_string(conditions[i]["min_fl"].GetInt()) + ')';
-				passed[4] = true;
+		min_fl = 0;
+		//if (conditions[i].HasMember("min_fl") && (min_fl = conditions[i]["min_fl"].GetInt()) > 0) {
+		if (conditions[i].HasMember("min_fl")) {
+			if (conditions[i]["min_fl"].IsString()) {
+				if (is_number(conditions[i]["min_fl"].GetString())) {
+					min_fl = stoi(conditions[i]["min_fl"].GetString());
+				}
 			}
-			else {
-				returnValid["MIN_FL"] = "Failed Minimum FL. Min FL: " + to_string(min_fl);
+			else if (conditions[i]["min_fl"].IsInt()) {
+				min_fl = conditions[i]["min_fl"].GetInt();
+			}
+			if (min_fl > 0) {
+				if ((RFL / 100) >= min_fl) {
+					returnValid["MIN_FL"] = "Passed Minimum FL (" + to_string(conditions[i]["min_fl"].GetInt()) + ')';
+					passed[4] = true;
+				}
+				else {
+					returnValid["MIN_FL"] = "Failed Minimum FL. Min FL: " + to_string(min_fl);
+				}
 			}
 		}
 		else {
@@ -362,20 +381,34 @@ map<string, string> CVFPCPlugin::validizeSid(CFlightPlan flightPlan) {
 			passed[4] = true;
 		}
 
-		if (conditions[i].HasMember("max_fl") && (max_fl = conditions[i]["max_fl"].GetInt()) > 0) {
-			if ((RFL / 100) <= max_fl) {
-				returnValid["MAX_FL"] = "Passed Maximum FL (" + to_string(conditions[i]["max_fl"].GetInt()) + ')';
-				passed[5] = true;
+		//if (conditions[i].HasMember("max_fl") && (max_fl = conditions[i]["max_fl"].GetInt()) > 0) {
+		max_fl = 0;
+		if (conditions[i].HasMember("max_fl")) {
+			if (conditions[i]["max_fl"].IsString()) {
+				if (is_number(conditions[i]["max_fl"].GetString())) {
+					max_fl = stoi(conditions[i]["max_fl"].GetString());
+				}
 			}
-			else {
-				returnValid["MAX_FL"] = "Failed Maximum FL. Max FL: " + to_string(max_fl);
+			else if (conditions[i]["max_fl"].IsInt()) {
+				max_fl = conditions[i]["max_fl"].GetInt();
 			}
+			if (max_fl > 0) {
+				if ((RFL / 100) <= max_fl) {
+					returnValid["MAX_FL"] = "Passed Maximum FL (" + to_string(conditions[i]["max_fl"].GetInt()) + ')';
+					passed[5] = true;
+				}
+				else {
+					returnValid["MAX_FL"] = "Failed Maximum FL. Max FL: " + to_string(max_fl);
+				}
+			}
+
+			
 		}
 		else {
 			returnValid["MAX_FL"] = "No Maximum FL";
 			passed[5] = true;
 		}
-
+		
 		// Flight level allocation scheme
 		// Does Condition contain our first airway if it's limited
 		if (conditions[i]["allowed_fls"].IsArray() && conditions[i]["allowed_fls"].Size()) {
@@ -403,6 +436,7 @@ map<string, string> CVFPCPlugin::validizeSid(CFlightPlan flightPlan) {
 
 
 		// Special navigation requirements needed
+
 		if (conditions[i]["navigation"].IsString()) {
 			string navigation_constraints(conditions[i]["navigation"].GetString());
 			if (string::npos == navigation_constraints.find_first_of(flightPlan.GetFlightPlanData().GetCapibilities())) {
@@ -417,6 +451,17 @@ map<string, string> CVFPCPlugin::validizeSid(CFlightPlan flightPlan) {
 		else {
 			returnValid["NAVIGATION"] = "No navigation capability restr";
 			passed[7] = true;
+		}
+
+		//Wake turbulence category
+		char wtc_a = flightPlan.GetFlightPlanData().GetAircraftWtc();
+		//char wtc_a = 'M';
+		string wtc = string() + wtc_a;
+		if (conditions[i]["wtc"].IsString()) {
+			if (wtc != conditions[i]["wtc"].GetString()) {
+				continue;
+			}
+			
 		}
 
 		bool passedVeri{ false };
@@ -489,7 +534,16 @@ void CVFPCPlugin::OnGetTagItem(CFlightPlan FlightPlan, CRadarTarget RadarTarget,
 			strcpy_s(sItemString, 16, "VFR");
 		}
 		else {
-			map<string, string> messageBuffer = validizeSid(FlightPlan);
+			map<string, string> messageBuffer;
+			try {
+				messageBuffer = validizeSid(FlightPlan);
+			}
+			catch (const std::exception& e) {
+				sendMessage(e.what());
+			}
+			catch (...) {
+
+			}
 
 			if (find(AircraftIgnore.begin(), AircraftIgnore.end(), FlightPlan.GetCallsign()) != AircraftIgnore.end()) {
 				*pRGB = TAG_GREY;
